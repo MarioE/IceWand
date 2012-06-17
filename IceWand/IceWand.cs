@@ -129,6 +129,12 @@ namespace IceWand
                 e.Player.SendMessage("Ice wand actions: " + actions.ToString(), Color.Yellow);
                 return;
             }
+            else if (e.Parameters[0].ToLower() == "off")
+            {
+                ActionTypes[e.Player.Index] = 0;
+                e.Player.SendMessage("Turned off ice wand.");
+                return;
+            }
 
             for (int i = 1; i < Actions.Count; i++)
             {
