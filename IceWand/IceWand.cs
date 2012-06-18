@@ -62,6 +62,7 @@ namespace IceWand
             {
                 int X = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 1);
                 int Y = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 5);
+                Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
                 TShock.Players[e.Msg.whoAmI].SendTileSquare(X, Y, 1);
                 e.Handled = true;
             }
@@ -74,17 +75,14 @@ namespace IceWand
 
                 int ID = TShock.Utils.SearchProjectile(BitConverter.ToInt16(e.Msg.readBuffer, e.Index), e.Msg.readBuffer[e.Index + 2]);
                 Projectile p = Main.projectile[ID];
-                if (p.type == 80)
+                if (p.type == 80 && p.velocity != Vector2.Zero)
                 {
+                    Vector2 normalized = p.velocity;
+                    normalized.Normalize();
                     int X = (int)p.position.X / 16;
                     int Y = (int)p.position.Y / 16;
-                    if (p.velocity != Vector2.Zero)
-                    {
-                        Vector2 normalized = p.velocity;
-                        normalized.Normalize();
-                        X = (int)Math.Round((X * 16f + 8f - normalized.X) / 16f);
-                        Y = (int)Math.Round((Y * 16f + 8f - normalized.Y) / 16f);
-                    }
+                    X = (int)Math.Round((X * 16f + 8f - normalized.X) / 16f);
+                    Y = (int)Math.Round((Y * 16f + 8f - normalized.Y) / 16f);
                     if (ActionTypes[e.Msg.whoAmI] != 0)
                     {
                         Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
