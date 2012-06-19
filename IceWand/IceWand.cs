@@ -188,9 +188,7 @@ namespace IceWand
         {
             if (data >= 0 && data < Main.maxTileSets)
             {
-                Main.tile[X, Y].active = true;
-                Main.tile[X, Y].type = (byte)data;
-                WorldGen.SquareTileFrame(X, Y);
+                WorldGen.PlaceTile(X, Y, data, true, true);
                 TSPlayer.All.SendTileSquare(X, Y, 1);
             }
         }
@@ -198,8 +196,7 @@ namespace IceWand
         {
             if (data > 0 && data < Main.maxWallTypes)
             {
-                Main.tile[X, Y].wall = (byte)data;
-                WorldGen.SquareWallFrame(X, Y);
+                WorldGen.PlaceWall(X, Y, data, true);
                 TSPlayer.All.SendTileSquare(X, Y, 1);
             }
         }
