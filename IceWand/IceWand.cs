@@ -63,7 +63,7 @@ namespace IceWand
                 int X = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 1);
                 int Y = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 5);
                 Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
-                TShock.Players[e.Msg.whoAmI].SendTileSquare(X, Y, 1);
+                TSPlayer.All.SendTileSquare(X, Y, 1);
                 e.Handled = true;
             }
             else if (e.MsgID == PacketTypes.ProjectileDestroy && !e.Handled)
@@ -108,7 +108,7 @@ namespace IceWand
 
         void IceWandCmd(CommandArgs e)
         {
-            if (e.Parameters.Count > 2)
+            if (e.Parameters.Count != 1 && e.Parameters.Count != 2)
             {
                 e.Player.SendMessage("Invalid syntax! Proper syntax: /icewand <action> [data]", Color.Red);
                 return;
