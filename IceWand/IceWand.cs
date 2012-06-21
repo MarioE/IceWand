@@ -172,7 +172,6 @@ namespace IceWand
             Terraria.Item temp = new Terraria.Item();
             temp.SetDefaults(data);
             int ID = Terraria.Item.NewItem(X * 16, Y * 16, 0, 0, data, temp.maxStack);
-            
         }
         void Lava(int X, int Y, int data, int plr)
         {
