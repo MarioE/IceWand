@@ -96,6 +96,7 @@ namespace IceWand
 
             Actions.Add(null);
             Actions.Add(new IceWandAction(Explode, "explode"));
+            Actions.Add(new IceWandAction(Item, "item"));
             Actions.Add(new IceWandAction(Lava, "lava"));
             Actions.Add(new IceWandAction(Position, "position"));
             Actions.Add(new IceWandAction(SpawnMob, "spawnmob"));
@@ -165,6 +166,13 @@ namespace IceWand
         {
             int ID = Projectile.NewProjectile(X * 16 + 8, Y * 16 + 8, 0, 0, 108, 250, 10);
             TSPlayer.All.SendData(PacketTypes.ProjectileNew, "", ID);
+        }
+        void Item(int X, int Y, int data, int plr)
+        {
+            Terraria.Item temp = new Terraria.Item();
+            temp.SetDefaults(data);
+            int ID = Terraria.Item.NewItem(X * 16, Y * 16, 0, 0, data, temp.maxStack);
+            
         }
         void Lava(int X, int Y, int data, int plr)
         {
