@@ -137,22 +137,25 @@ namespace IceWand
             {
                 if (Actions[i].name == e.Parameters[0].ToLower())
                 {
-                    if (!e.Player.Group.HasPermission("iw." + Actions[i].name) && !e.Player.Group.HasPermission("iw.*"))
+                    if (e.Player.Group.HasPermission("iw." + Actions[i].name) || e.Player.Group.HasPermission("iw.*"))
+                    {
+                        if (e.Parameters.Count != 1)
+                        {
+                            if (!int.TryParse(e.Parameters[1], out ActionData[e.Player.Index]))
+                            {
+                                e.Player.SendMessage("Invalid data.", Color.Red);
+                                return;
+                            }
+                        }
+                        ActionTypes[e.Player.Index] = (byte)i;
+                        e.Player.SendMessage("Ice wand action is now " + Actions[i].name + ".");
+                        return;
+                    }
+                    else
                     {
                         e.Player.SendMessage("You do not have access to this action.", Color.Red);
                         return;
                     }
-                    if (e.Parameters.Count != 1)
-                    {
-                        if (!int.TryParse(e.Parameters[1], out ActionData[e.Player.Index]))
-                        {
-                            e.Player.SendMessage("Invalid data.", Color.Red);
-                            return;
-                        }
-                    }
-                    ActionTypes[e.Player.Index] = (byte)i;
-                    e.Player.SendMessage("Ice wand action is now: " + Actions[i].name + ".");
-                    return;
                 }
             }
             e.Player.SendMessage("Invalid ice wand action.", Color.Red);
