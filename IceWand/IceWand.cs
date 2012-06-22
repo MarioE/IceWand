@@ -46,12 +46,14 @@ namespace IceWand
             {
                 GameHooks.Initialize -= OnInitialize;
                 NetHooks.GetData -= OnGetData;
+                ServerHooks.Leave -= OnLeave;
             }
         }
         public override void Initialize()
         {
             GameHooks.Initialize += OnInitialize;
             NetHooks.GetData += OnGetData;
+            ServerHooks.Leave += OnLeave;
         }
 
         void OnGetData(GetDataEventArgs e)
@@ -104,6 +106,11 @@ namespace IceWand
             Actions.Add(new IceWandAction(Teleport, "tp"));
             Actions.Add(new IceWandAction(Wall, "wall"));
             Actions.Add(new IceWandAction(Water, "water"));
+        }
+        void OnLeave(int plr)
+        {
+            ActionData[plr] = 0;
+            ActionTypes[plr] = 0;
         }
 
         void IceWandCmd(CommandArgs e)
