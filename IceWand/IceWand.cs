@@ -61,35 +61,16 @@ namespace IceWand
             if (e.MsgID == PacketTypes.Tile && !e.Handled &&
                 e.Msg.readBuffer[e.Index] == 1 && e.Msg.readBuffer[e.Index + 9] == 127 && ActionTypes[e.Msg.whoAmI] != 0)
             {
-                int X = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 1);
-                int Y = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 5);
-                Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
-                TSPlayer.All.SendTileSquare(X, Y, 1);
-                e.Handled = true;
-            }
-            else if (e.MsgID == PacketTypes.ProjectileDestroy && !e.Handled)
-            {
                 if (WorldGen.genRand == null)
                 {
                     WorldGen.genRand = new Random();
                 }
 
-                int ID = TShock.Utils.SearchProjectile(BitConverter.ToInt16(e.Msg.readBuffer, e.Index), e.Msg.readBuffer[e.Index + 2]);
-                Projectile p = Main.projectile[ID];
-                if (p.type == 80 && p.velocity != Vector2.Zero)
-                {
-                    Vector2 normalized = p.velocity;
-                    normalized.Normalize();
-                    int X = (int)p.position.X / 16;
-                    int Y = (int)p.position.Y / 16;
-                    X = (int)Math.Round((X * 16f + 8f - normalized.X) / 16f);
-                    Y = (int)Math.Round((Y * 16f + 8f - normalized.Y) / 16f);
-                    if (ActionTypes[e.Msg.whoAmI] != 0)
-                    {
-                        Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
-                        e.Handled = true;
-                    }
-                }
+                int X = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 1);
+                int Y = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 5);
+                Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
+                TSPlayer.All.SendTileSquare(X, Y, 1);
+                e.Handled = true;
             }
         }
         void OnInitialize()
@@ -97,6 +78,7 @@ namespace IceWand
             Commands.ChatCommands.Add(new Command("icewand", IceWandCmd, "icewand", "iw"));
 
             Actions.Add(null);
+            Actions.Add(new IceWandAction(Bomb, "bomb"));
             Actions.Add(new IceWandAction(Explode, "explode"));
             Actions.Add(new IceWandAction(Item, "item"));
             Actions.Add(new IceWandAction(Lava, "lava"));
@@ -169,6 +151,12 @@ namespace IceWand
             e.Player.SendMessage("Invalid ice wand action.", Color.Red);
         }
 
+        void Bomb(int X, int Y, int data, int plr)
+        {
+            int ID = Projectile.NewProjectile(X * 16 + 8, Y * 16 + 8, 0, 0, 28, 250, 10);
+            Main.projectile[ID].timeLeft = 1;
+            TSPlayer.All.SendData(PacketTypes.ProjectileNew, "", ID);
+        }
         void Explode(int X, int Y, int data, int plr)
         {
             int ID = Projectile.NewProjectile(X * 16 + 8, Y * 16 + 8, 0, 0, 108, 250, 10);
