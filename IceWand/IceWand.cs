@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Hooks;
 using Terraria;
+using TerrariaApi.Server;
 using TShockAPI;
 
 namespace IceWand
 {
-	[APIVersion(1, 12)]
+	[ApiVersion(1, 14)]
 	public class IceWand : TerrariaPlugin
 	{
-		public List<IWAction> Actions = new List<IWAction>();
+		public List<IceWandAction> Actions = new List<IceWandAction>();
 		public int[] ActionData = new int[256];
 		public byte[] ActionTypes = new byte[256];
 		public override string Author
@@ -42,16 +42,16 @@ namespace IceWand
 		{
 			if (disposing)
 			{
-				GameHooks.Initialize -= OnInitialize;
-				NetHooks.GetData -= OnGetData;
-				ServerHooks.Leave -= OnLeave;
+				ServerApi.Hooks.GameInitialize.Deregister(this, OnInitialize);
+				ServerApi.Hooks.NetGetData.Deregister(this, OnGetData);
+				ServerApi.Hooks.ServerLeave.Deregister(this, OnLeave);
 			}
 		}
 		public override void Initialize()
 		{
-			GameHooks.Initialize += OnInitialize;
-			NetHooks.GetData += OnGetData;
-			ServerHooks.Leave += OnLeave;
+			ServerApi.Hooks.GameInitialize.Register(this, OnInitialize);
+			ServerApi.Hooks.NetGetData.Register(this, OnGetData);
+			ServerApi.Hooks.ServerLeave.Register(this, OnLeave);
 		}
 
 		void OnGetData(GetDataEventArgs e)
@@ -60,63 +60,61 @@ namespace IceWand
 				e.Msg.readBuffer[e.Index] == 1 && e.Msg.readBuffer[e.Index + 9] == 127 && ActionTypes[e.Msg.whoAmI] != 0)
 			{
 				if (WorldGen.genRand == null)
-				{
 					WorldGen.genRand = new Random();
-				}
 
 				int X = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 1);
 				int Y = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 5);
-				Actions[ActionTypes[e.Msg.whoAmI]].action.Invoke(X, Y, ActionData[e.Msg.whoAmI], e.Msg.whoAmI);
+				Actions[ActionTypes[e.Msg.whoAmI]].callback.Invoke(null,
+					new IceWandEventArgs(X, Y, TShock.Players[e.Msg.whoAmI], ActionData[e.Msg.whoAmI]));
 				TSPlayer.All.SendTileSquare(X, Y, 1);
 				e.Handled = true;
 			}
 		}
-		void OnInitialize()
+		void OnInitialize(EventArgs e)
 		{
 			Commands.ChatCommands.Add(new Command("icewand", IceWandCmd, "icewand", "iw"));
 
 			Actions.Add(null);
-			Actions.Add(new IWAction(Bomb, "bomb"));
-			Actions.Add(new IWAction(Explode, "explode"));
-			Actions.Add(new IWAction(Item, "item"));
-			Actions.Add(new IWAction(Lava, "lava"));
-			Actions.Add(new IWAction(Position, "position"));
-			Actions.Add(new IWAction(SpawnMob, "spawnmob"));
-			Actions.Add(new IWAction(Tile, "tile"));
-			Actions.Add(new IWAction(Teleport, "tp"));
-			Actions.Add(new IWAction(Wall, "wall"));
-			Actions.Add(new IWAction(Water, "water"));
+			Actions.Add(new IceWandAction(Bomb, "bomb"));
+			Actions.Add(new IceWandAction(Explode, "explode"));
+			Actions.Add(new IceWandAction(Honey, "honey"));
+			Actions.Add(new IceWandAction(Item, "item"));
+			Actions.Add(new IceWandAction(Lava, "lava"));
+			Actions.Add(new IceWandAction(Position, "position"));
+			Actions.Add(new IceWandAction(SpawnMob, "spawnmob"));
+			Actions.Add(new IceWandAction(Tile, "tile"));
+			Actions.Add(new IceWandAction(Wall, "wall"));
+			Actions.Add(new IceWandAction(Water, "water"));
 		}
-		void OnLeave(int plr)
+		void OnLeave(LeaveEventArgs e)
 		{
-			ActionData[plr] = 0;
-			ActionTypes[plr] = 0;
+			ActionData[e.Who] = 0;
+			ActionTypes[e.Who] = 0;
 		}
 
 		void IceWandCmd(CommandArgs e)
 		{
 			if (e.Parameters.Count != 1 && e.Parameters.Count != 2)
 			{
-				e.Player.SendMessage("Invalid syntax! Proper syntax: /icewand <action> [data]", Color.Red);
+				e.Player.SendErrorMessage("Invalid syntax! Proper syntax: /icewand <action> [data]");
 				return;
 			}
+
 			string actionName = e.Parameters[0].ToLower();
 			if (actionName == "help" || actionName == "list")
 			{
-				StringBuilder actions = new StringBuilder();
+				var actions = new StringBuilder();
 				for (int i = 1; i < Actions.Count; i++)
 				{
-					if (e.Player.Group.HasPermission("iw." + Actions[i].name) || e.Player.Group.HasPermission("iw.*"))
-					{
+					if (e.Player.Group.HasPermission("iw." + Actions[i].name))
 						actions.Append(Actions[i].name).Append(", ");
-					}
 				}
-				e.Player.SendMessage("Available actions: " + actions.ToString().Substring(0, actions.Length - 2), Color.Yellow);
+				e.Player.SendInfoMessage("Available actions: " + actions.ToString().Substring(0, actions.Length - 2));
 			}
 			else if (e.Parameters[0].ToLower() == "off")
 			{
 				ActionTypes[e.Player.Index] = 0;
-				e.Player.SendMessage("Turned off ice wand.", Color.Green);
+				e.Player.SendSuccessMessage("Turned off ice wand.");
 			}
 			else
 			{
@@ -124,90 +122,91 @@ namespace IceWand
 				{
 					if (Actions[i].name == actionName)
 					{
-						if (e.Player.Group.HasPermission("iw." + Actions[i].name) || e.Player.Group.HasPermission("iw.*"))
+						if (e.Player.Group.HasPermission("iw." + Actions[i].name))
 						{
 							if (e.Parameters.Count != 1)
 							{
 								if (!int.TryParse(e.Parameters[1], out ActionData[e.Player.Index]))
 								{
-									e.Player.SendMessage("Invalid data.", Color.Red);
+									e.Player.SendErrorMessage("Invalid data.");
 									return;
 								}
 							}
 							ActionTypes[e.Player.Index] = (byte)i;
-							e.Player.SendMessage("Ice wand action is now " + Actions[i].name + ".", Color.Green);
+							e.Player.SendSuccessMessage("Ice wand action is now {0}.", Actions[i].name);
 							return;
 						}
 						else
 						{
-							e.Player.SendMessage("You do not have access to this action.", Color.Red);
+							e.Player.SendErrorMessage("You do not have access to this action.");
 							return;
 						}
 					}
 				}
-				e.Player.SendMessage("Invalid ice wand action.", Color.Red);
+				e.Player.SendErrorMessage("Invalid ice wand action.");
 			}
 		}
 
-		void Bomb(int X, int Y, int data, int plr)
+		void Bomb(object sender, IceWandEventArgs e)
 		{
-			int ID = Projectile.NewProjectile(X * 16 + 8, Y * 16 + 8, 0, 0, 28, 250, 10);
+			int ID = Projectile.NewProjectile(e.X * 16 + 8, e.Y * 16 + 8, 0, 0, 28, 250, 10);
 			Main.projectile[ID].timeLeft = 1;
 			TSPlayer.All.SendData(PacketTypes.ProjectileNew, "", ID);
 		}
-		void Explode(int X, int Y, int data, int plr)
+		void Explode(object sender, IceWandEventArgs e)
 		{
-			int ID = Projectile.NewProjectile(X * 16 + 8, Y * 16 + 8, 0, 0, 108, 250, 10);
+			int ID = Projectile.NewProjectile(e.X * 16 + 8, e.Y * 16 + 8, 0, 0, 108, 250, 10);
 			TSPlayer.All.SendData(PacketTypes.ProjectileNew, "", ID);
 		}
-		void Item(int X, int Y, int data, int plr)
+		void Honey(object sender, IceWandEventArgs e)
 		{
-			Terraria.Item temp = new Terraria.Item();
-			temp.SetDefaults(data);
-			int ID = Terraria.Item.NewItem(X * 16, Y * 16, 0, 0, data, temp.maxStack);
+			Main.tile[e.X, e.Y].liquidType(2);
+			Main.tile[e.X, e.Y].liquid = 255;
+			WorldGen.SquareTileFrame(e.X, e.Y);
+			TSPlayer.All.SendTileSquare(e.X, e.Y, 1);
 		}
-		void Lava(int X, int Y, int data, int plr)
+		void Item(object sender, IceWandEventArgs e)
 		{
-			Main.tile[X, Y].lava = true;
-			Main.tile[X, Y].liquid = 255;
-			WorldGen.SquareTileFrame(X, Y);
-			TSPlayer.All.SendTileSquare(X, Y, 1);
+			int ID = Terraria.Item.NewItem(e.X * 16, e.Y * 16, 0, 0, e.Data, 1);
 		}
-		void Position(int X, int Y, int data, int plr)
+		void Lava(object sender, IceWandEventArgs e)
 		{
-			TShock.Players[plr].SendMessage("Position: " + X + ", " + Y, Color.Yellow);
+			Main.tile[e.X, e.Y].liquidType(1);
+			Main.tile[e.X, e.Y].liquid = 255;
+			WorldGen.SquareTileFrame(e.X, e.Y);
+			TSPlayer.All.SendTileSquare(e.X, e.Y, 1);
 		}
-		void SpawnMob(int X, int Y, int data, int plr)
+		void Position(object sender, IceWandEventArgs e)
 		{
-			int ID = NPC.NewNPC(X * 16, Y * 16, data);
+			e.Player.SendInfoMessage("Position: {0}, {1}", e.X, e.Y);
+		}
+		void SpawnMob(object sender, IceWandEventArgs e)
+		{
+			int ID = NPC.NewNPC(e.X * 16, e.Y * 16, e.Data);
 			TSPlayer.All.SendData(PacketTypes.NpcUpdate, "", ID);
 		}
-		void Teleport(int X, int Y, int dat, int plr)
+		void Tile(object sender, IceWandEventArgs e)
 		{
-			TShock.Players[plr].Teleport(X, Y);
-		}
-		void Tile(int X, int Y, int data, int plr)
-		{
-			if (data >= 0 && data < Main.maxTileSets)
+			if (e.Data >= 0 && e.Data < Main.maxTileSets)
 			{
-				WorldGen.PlaceTile(X, Y, data, true, true);
-				TSPlayer.All.SendTileSquare(X, Y, 1);
+				WorldGen.PlaceTile(e.X, e.Y, e.Data, true, true);
+				TSPlayer.All.SendTileSquare(e.X, e.Y, 4);
 			}
 		}
-		void Wall(int X, int Y, int data, int plr)
+		void Wall(object sender, IceWandEventArgs e)
 		{
-			if (data > 0 && data < Main.maxWallTypes)
+			if (e.Data > 0 && e.Data < Main.maxWallTypes)
 			{
-				WorldGen.PlaceWall(X, Y, data, true);
-				TSPlayer.All.SendTileSquare(X, Y, 1);
+				WorldGen.PlaceWall(e.X, e.Y, e.Data, true);
+				TSPlayer.All.SendTileSquare(e.X, e.Y, 1);
 			}
 		}
-		void Water(int X, int Y, int data, int plr)
+		void Water(object sender, IceWandEventArgs e)
 		{
-			Main.tile[X, Y].lava = false;
-			Main.tile[X, Y].liquid = 255;
-			WorldGen.SquareTileFrame(X, Y);
-			TSPlayer.All.SendTileSquare(X, Y, 1);
+			Main.tile[e.X, e.Y].liquidType(0);
+			Main.tile[e.X, e.Y].liquid = 255;
+			WorldGen.SquareTileFrame(e.X, e.Y);
+			TSPlayer.All.SendTileSquare(e.X, e.Y, 1);
 		}
 	}
 }
