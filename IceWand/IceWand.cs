@@ -72,7 +72,7 @@ namespace IceWand
 		}
 		void OnInitialize(EventArgs e)
 		{
-			Commands.ChatCommands.Add(new Command("icewand", IceWandCmd, "icewand", "iw"));
+			Commands.ChatCommands.Add(new Command("iw.use", IceWandCmd, "icewand", "iw"));
 
 			Actions.Add(null);
 			Actions.Add(new IceWandAction(Bomb, "bomb"));
