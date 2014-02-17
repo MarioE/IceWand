@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -9,12 +10,13 @@ using TShockAPI;
 
 namespace IceWand
 {
-	[ApiVersion(1, 14)]
+	[ApiVersion(1, 15)]
 	public class IceWand : TerrariaPlugin
 	{
-		public List<IceWandAction> Actions = new List<IceWandAction>();
-		public int[] ActionData = new int[256];
-		public byte[] ActionTypes = new byte[256];
+		List<IceWandAction> Actions = new List<IceWandAction>();
+		int[] ActionData = new int[256];
+		byte[] ActionTypes = new byte[256];
+
 		public override string Author
 		{
 			get { return "MarioE"; }
@@ -56,18 +58,26 @@ namespace IceWand
 
 		void OnGetData(GetDataEventArgs e)
 		{
-			if (!e.Handled && e.MsgID == PacketTypes.Tile &&
-				e.Msg.readBuffer[e.Index] == 1 && e.Msg.readBuffer[e.Index + 9] == 127 && ActionTypes[e.Msg.whoAmI] != 0)
+			if (!e.Handled && e.MsgID == PacketTypes.Tile)
 			{
-				if (WorldGen.genRand == null)
-					WorldGen.genRand = new Random();
+				using (var reader = new BinaryReader(new MemoryStream(e.Msg.readBuffer, e.Index, e.Length)))
+				{
+					byte action = reader.ReadByte();
+					int x = reader.ReadInt32();
+					int y = reader.ReadInt32();
+					ushort type = reader.ReadUInt16();
 
-				int X = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 1);
-				int Y = BitConverter.ToInt32(e.Msg.readBuffer, e.Index + 5);
-				Actions[ActionTypes[e.Msg.whoAmI]].callback.Invoke(null,
-					new IceWandEventArgs(X, Y, TShock.Players[e.Msg.whoAmI], ActionData[e.Msg.whoAmI]));
-				TSPlayer.All.SendTileSquare(X, Y, 1);
-				e.Handled = true;
+					if (type == 127 && ActionTypes[e.Msg.whoAmI] != 0)
+					{
+						if (WorldGen.genRand == null)
+							WorldGen.genRand = new Random();
+
+						Actions[ActionTypes[e.Msg.whoAmI]].callback.Invoke(null,
+							new IceWandEventArgs(x, y, TShock.Players[e.Msg.whoAmI], ActionData[e.Msg.whoAmI]));
+						TSPlayer.All.SendTileSquare(x, y, 1);
+						e.Handled = true;
+					}
+				}
 			}
 		}
 		void OnInitialize(EventArgs e)
