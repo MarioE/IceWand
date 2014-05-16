@@ -10,7 +10,7 @@ using TShockAPI;
 
 namespace IceWand
 {
-	[ApiVersion(1, 15)]
+	[ApiVersion(1, 16)]
 	public class IceWand : TerrariaPlugin
 	{
 		List<IceWandAction> Actions = new List<IceWandAction>();
@@ -63,8 +63,8 @@ namespace IceWand
 				using (var reader = new BinaryReader(new MemoryStream(e.Msg.readBuffer, e.Index, e.Length)))
 				{
 					byte action = reader.ReadByte();
-					int x = reader.ReadInt32();
-					int y = reader.ReadInt32();
+					int x = reader.ReadInt16();
+					int y = reader.ReadInt16();
 					ushort type = reader.ReadUInt16();
 
 					if (type == 127 && ActionTypes[e.Msg.whoAmI] != 0)
